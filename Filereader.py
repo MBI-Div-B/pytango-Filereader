@@ -13,6 +13,8 @@ import re
 class Filereader(Device):
     def read_float(self, attr):
         with open(self.directory + "\\" + self.fileName + self.fileType) as f:
+            for i in range(int(self.skipLines)):
+                line = f.readline()
             line = f.readline()
         if self.separator != "," and "," in line:
             line = line.replace(",",".")
@@ -46,7 +48,13 @@ class Filereader(Device):
     multipleLines = device_property(
         dtype = str,
         default_value = "False"
+    )#not jet justed
+
+    skipLines = device_property(
+        dtype = str,
+        default_value = 0
     )
+
 
 
 
@@ -55,6 +63,8 @@ class Filereader(Device):
         if len(self.separatorAndAttributeNames) == 1:
             self.separator = self.separatorAndAttributeNames
             with open(self.directory + "\\" + self.fileName + self.fileType) as f:
+                for i in range(int(self.skipLines)):
+                    line = f.readline()
                 line = f.readline()
             l = line.split(self.separator)
             self.AttrDict = {}

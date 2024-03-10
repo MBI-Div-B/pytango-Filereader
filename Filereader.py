@@ -1,5 +1,4 @@
 from encodings import utf_8
-import tango
 from tango import DebugIt
 from tango.server import run
 from tango.server import Device
@@ -13,17 +12,18 @@ import re
 
 class Filereader(Device):
     def read_float(self, attr):
-        with open(directory+"\\"+fileName+fileType) as f:
+        with open(self.directory + "\\" + self.fileName + self.fileType) as f:
             line = f.readline()
+        if self.separator != "," and "," in line:
+            line = line.replace(",",".")
         l = line.split(self.separator)
-        return l[self.AttrList[attr]]
+        return float(l[self.AttrDict[attr.get_name()]])
         
         
                 
 
     fileType = device_property(
         dtype='DevString',
-	    mandatory = True,
         default_value=".txt"
     )
 
@@ -37,10 +37,11 @@ class Filereader(Device):
         mandatory = True
     )
 
+
     separatorAndAttributeNames = device_property(
         dtype='DevString',
         default_value = ";Example1;;Example2"
-    ) 
+    ) # if only separator is given all values in one line are read an given the generic name AttributeX
     
     multipleLines = device_property(
         dtype = str,
@@ -51,13 +52,24 @@ class Filereader(Device):
 
     def init_device(self):
         Device.init_device(self)
-        self.separator = "".join(set(re.sub(r'\w+', '', separatorAndAttributeNames)))   #extracts the seperator
-        if len() != 1:
-            self.set_state(DevState.FAULT)
-            self.debug_stream("wrong separator this was detected "+ self.separator)
-        self.AttrList = [(x,i) for i,x in enumerate(separatorAndAttributeNames.split(self.separator)) if x != ""] #extracts the attribute names
-        for i in self.AttrList:
-            self.create_float_attributes(i[1])
+        if len(self.separatorAndAttributeNames) == 1:
+            self.separator = self.separatorAndAttributeNames
+            with open(self.directory + "\\" + self.fileName + self.fileType) as f:
+                line = f.readline()
+            l = line.split(self.separator)
+            self.AttrDict = {}
+            for i in range(len(l)):
+                self.AttrDict["Attribute"+str(i)] = i
+                self.create_float_attributes("Attribute"+str(i))
+        else:
+            self.separator = "".join(set(re.sub(r'\w+', '', self.separatorAndAttributeNames)))   #extracts the seperator
+            if len(self.separator) != 1:
+                self.set_state(DevState.FAULT)
+                self.debug_stream("wrong separator this was detected "+ self.separator)
+            self.AttrDict = dict([(x,i) for i,x in enumerate(self.separatorAndAttributeNames.split(self.separator)) if x != ""]) #extracts the attribute names
+            for i in self.AttrDict:
+                self.create_float_attributes(i)
+        self.set_state(DevState.ON)
 
     @command(
         dtype_in='DevString',
